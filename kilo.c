@@ -68,12 +68,41 @@ char editorReadKey(void)
 {
     int nread = 0;
     char c;
-    while ((nread == read(STDIN_FILENO, &c, 1)) != 1)
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1)
     {
         if (nread == -1 && errno != EAGAIN)
             die("read");
     }
-    return c;
+    if (c == '\x1b')
+    {
+
+        char seq[3];
+
+        if (read(STDIN_FILENO, &seq[0], 1) != 1)
+            return '\x1b';
+        if (read(STDIN_FILENO, &seq[1], 1) != 1)
+            return '\x1b';
+
+        if (seq[0] == '[')
+        {
+            switch (seq[1])
+            {
+            case 'A':
+                return 'w';
+            case 'B':
+                return 's';
+            case 'C':
+                return 'd';
+            case 'D':
+                return 'a';
+            }
+        }
+
+        return '\x1b';
+    }else{
+        return c;
+    }
+
 }
 
 int getCursorPosition(int *rows, int *cols)
@@ -212,19 +241,20 @@ void editorRefreshScreen(void)
 
 void editorMoveCursor(char key)
 {
-    switch (key){
-        case 'h':
-            E.cx--;
-            break;
-        case 'l':
-            E.cx++;
-            break;
-        case 'j':
-            E.cy--;
-            break;
-        case 'k':
-            E.cy++;
-            break;
+    switch (key)
+    {
+    case 'a':
+        E.cx--;
+        break;
+    case 'd':
+        E.cx++;
+        break;
+    case 'w':
+        E.cy--;
+        break;
+    case 's':
+        E.cy++;
+        break;
     }
 }
 
@@ -239,11 +269,11 @@ void editorProcessKeypress(void)
         write(STDOUT_FILENO, "\x1b[H", 3);
         exit(0);
         break;
-    
-    case 'h':
-    case 'j':
-    case 'k':
-    case 'l':
+
+    case 'w':
+    case 's':
+    case 'a':
+    case 'd':
         editorMoveCursor(c);
         break;
     }
