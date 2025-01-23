@@ -288,6 +288,38 @@ void editorAppendRow(char *s, size_t len){
     E.numrows++;
 }
 
+void editorRowInsertChar(erow *row, int at, int c){
+    // Bound checking for the insertion point
+    if (at < 0 || at > row->size) at = row->size;
+
+    // Allocates and extra 2 bytes for the new char + null byte
+    row->chars = realloc(row->chars, row->size + 2);
+
+    // Allocates memory for the new size of the chars array
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+
+    // Increase the size of the row
+    row->size++;
+
+    // Actually inserts the char
+    row->chars[at] = c;
+    editorUpdateRow(row);
+}
+
+/*** editor operations ***/
+
+void editorInsertChar(int c){
+
+    // Check if we are at the last row of the file
+    if (E.cy == E.numrows){
+
+        // Add A new row
+        editorAppendRow("", 0);
+    }
+    editorRowInsertChar(&E.row[E.cy], E.cx, c);
+    E.cx++;
+}
+
 /*** file i/o ***/
 
 void editorOpen(char *filename)
@@ -554,6 +586,10 @@ void editorProcessKeypress(void)
     case ARROW_RIGHT:
     case ARROW_LEFT:
         editorMoveCursor(c);
+        break;
+    
+    default:
+        editorInsertChar(c);
         break;
     }
 }
