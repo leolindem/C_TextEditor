@@ -1,12 +1,3 @@
-/*
- * Kilo Editor -- Modern C++ Port
- *
- * Original logic by Snaptoken (https://viewsourcecode.org/snaptoken/kilo/).
- * This version uses C++ containers (std::vector, std::string),
- * RAII, and <fstream> for file IO.
- *
- * Compile: g++ -std=c++17 kilo.cpp -o kilo
- */
 
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
@@ -544,6 +535,24 @@ static void editorSave()
     editorSetStatusMessage("%lu bytes written to disk", (unsigned long)buffer.size());
 }
 
+/*** find ***/
+static void editorFind() {
+    std::string query = editorPrompt("Search: %s (ESC to cancel)");
+    if (query.empty()){
+        return;
+    }
+
+    for (size_t i = 0; i < E.rows.size(); i++){
+        size_t pos = E.rows[i].chars.find(query);
+        if (pos != std::string::npos) {
+            E.cy = i;
+            E.cx = static_cast<int>(pos);
+            E.rowoff = E.rows.size();
+            break;
+        }
+    }
+}
+
 /*** append buffer for rendering ***/
 
 /*
@@ -927,6 +936,10 @@ static void editorProcessKeypress()
         E.cx = (int)E.rows[E.cy].chars.size();
         break;
 
+    case CTRL_KEY('f'):
+        editorFind();
+        break;
+
     case BACKSPACE:
     case CTRL_KEY('h'):
     case DEL_KEY:
@@ -1018,7 +1031,7 @@ int main(int argc, char *argv[])
         editorOpen(argv[1]);
     }
 
-    editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit");
+    editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
 
     while (true)
     {
