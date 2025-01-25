@@ -82,7 +82,7 @@ static editorConfig E;
 /*** prototypes ***/
 void editorSetStatusMessage(const char *fmt, ...);
 void editorRefreshScreen();
-std::string editorPrompt(const std::string &prompt);
+std::string editorPrompt(const std::string &prompt, void (*callback)(std::string &, int));
 
 /*** terminal ***/
 
@@ -512,7 +512,7 @@ static void editorSave()
 {
     if (E.filename.empty())
     {
-        std::string newName = editorPrompt("Save as: %s (ESC to cancel)");
+        std::string newName = editorPrompt("Save as: %s (ESC to cancel)", NULL);
         if (newName.empty())
         {
             editorSetStatusMessage("Save aborted");
@@ -536,9 +536,9 @@ static void editorSave()
 }
 
 /*** find ***/
-static void editorFind() {
-    std::string query = editorPrompt("Search: %s (ESC to cancel)");
-    if (query.empty()){
+static void editorFindCallback(std::string &query, int key) {
+    if (key == '\r' || key == '\x1b')
+    {
         return;
     }
 
@@ -551,6 +551,10 @@ static void editorFind() {
             break;
         }
     }
+}
+
+static void editorFind() {
+    std::string query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
 }
 
 /*** append buffer for rendering ***/
@@ -795,7 +799,7 @@ void editorSetStatusMessage(const char *fmt, ...)
  * a "%s" where we insert the user's input. Returns the input string,
  * or empty if the user cancels with ESC.
  */
-std::string editorPrompt(const std::string &prompt)
+std::string editorPrompt(const std::string &prompt, void (*callback)(std::string &, int))
 {
     std::string input;
     while (true)
@@ -817,6 +821,7 @@ std::string editorPrompt(const std::string &prompt)
         else if (c == '\x1b')
         {
             editorSetStatusMessage("");
+            if (callback) callback(input, c);
             return std::string();
         }
         else if (c == '\r')
@@ -824,6 +829,7 @@ std::string editorPrompt(const std::string &prompt)
             if (!input.empty())
             {
                 editorSetStatusMessage("");
+                if (callback) callback(input, c);
                 return input;
             }
         }
@@ -831,6 +837,8 @@ std::string editorPrompt(const std::string &prompt)
         {
             input.push_back((char)c);
         }
+
+        if (callback) callback(input, c);
     }
 }
 
