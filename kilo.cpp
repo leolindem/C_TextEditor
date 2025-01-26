@@ -537,15 +537,38 @@ static void editorSave()
 
 /*** find ***/
 static void editorFindCallback(std::string &query, int key) {
+    static int last_match = -1;
+    static int direction = 1;
+
     if (key == '\r' || key == '\x1b')
     {
+        last_match = -1;
+        direction = 1;
         return;
+    } else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
+        direction = 1;
+    } else if (key == ARROW_LEFT || key == ARROW_UP) {
+        direction = -1;
+    } else {
+        last_match = -1;
+        direction = 1;
     }
 
+    if (last_match == -1) direction = 1;
+    int current = last_match;
+
     for (size_t i = 0; i < E.rows.size(); i++){
-        size_t pos = E.rows[i].chars.find(query);
+        current += direction;
+        if (current == -1){
+            current = E.rows.size() - 1;
+        } 
+        else if (current == int(E.rows.size())){
+            current = 0;
+        }
+        size_t pos = E.rows[current].chars.find(query);
         if (pos != std::string::npos) {
-            E.cy = i;
+            last_match = current;
+            E.cy = current;
             E.cx = static_cast<int>(pos);
             E.rowoff = E.rows.size();
             break;
