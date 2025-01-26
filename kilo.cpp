@@ -554,7 +554,19 @@ static void editorFindCallback(std::string &query, int key) {
 }
 
 static void editorFind() {
+    int saved_cx = E.cx;
+    int saved_cy = E.cy;
+    int saved_coloff = E.coloff;
+    int saved_rowoff = E.rowoff;
+
     std::string query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
+
+    if (query.empty()){
+        E.cx = saved_cx;
+        E.cy = saved_cy;
+        E.coloff = saved_coloff;
+        E.rowoff = saved_rowoff;
+    }
 }
 
 /*** append buffer for rendering ***/
