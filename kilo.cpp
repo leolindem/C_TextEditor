@@ -697,10 +697,17 @@ static void editorDrawRows(abuf &ab)
                 len = 0;
             if (len > E.screencols)
                 len = E.screencols;
-
-            if (len > 0)
-            {
-                abAppend(ab, &row.render[E.coloff], len);
+            
+            for (int j = 0; j < len; j++){
+                char c = E.rows[filerow].render[E.coloff + j];
+                if (isdigit(c)){
+                    abAppend(ab, "\x1b[31m", 5);
+                    abAppend(ab, std::string(1, c).c_str(), 1);
+                    abAppend(ab, "\x1b[0m", 4);
+                }
+                else {
+                    abAppend(ab, std::string(1, c).c_str(), 1);
+                }
             }
         }
 
