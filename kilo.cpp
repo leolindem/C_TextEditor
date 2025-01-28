@@ -568,6 +568,15 @@ static void editorFindCallback(std::string &query, int key) {
     static int last_match = -1;
     static int direction = 1;
 
+    static int saved_hl_line;
+    static std::vector<int> *saved_hl = nullptr;
+
+    if (saved_hl){  
+        E.rows[saved_hl_line].hl = *saved_hl;
+        delete saved_hl;
+        saved_hl = nullptr;
+    }
+
     if (key == '\r' || key == '\x1b')
     {
         last_match = -1;
@@ -599,6 +608,9 @@ static void editorFindCallback(std::string &query, int key) {
             E.cy = current;
             E.cx = static_cast<int>(pos);
             E.rowoff = E.rows.size();
+
+            saved_hl_line = current;
+            saved_hl = new std::vector<int>(E.rows[current].hl);
 
             E.rows[current].hl.assign(E.rows[current].render.size(), HL_NORMAL); // Reset highlighting
             std::fill(E.rows[current].hl.begin() + pos, E.rows[current].hl.begin() + pos + query.size(), HL_MATCH);
