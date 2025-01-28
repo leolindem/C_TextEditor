@@ -47,7 +47,16 @@ enum editorHighlight {
     HL_MATCH
 };
 
+#define HL_HIGHLIGHT_NUMBERS (1 << 0)
+
 /*** data ***/
+
+struct editorSyntax
+{
+    std::string filetype;
+    std::vector<std::string> filematch;
+    int flags;
+};
 
 /*
  * Each line of text is stored in an ERow.
@@ -77,6 +86,7 @@ struct editorConfig
     std::string statusmsg;
     time_t statusmsg_time;
 
+    struct editorSyntax *syntax;
     struct termios orig_termios;
 
     // Each line in the file is stored in a vector of ERow
@@ -85,6 +95,25 @@ struct editorConfig
 
 /*** Global editor state ***/
 static editorConfig E;
+
+/*** filetype ***/
+struct EditorSyntax
+{
+    std::string filetype;                // File type name
+    std::vector<std::string> extensions; // File extensions
+    int flags;                           // Syntax highlighting flags
+};
+
+std::vector<EditorSyntax> HLDB = {
+    {
+        "c",                  // File type
+        {".c", ".h", ".cpp"}, // Extensions
+        HL_HIGHLIGHT_NUMBERS  // Flags
+    },
+};
+
+// Get the number of entries
+#define HLDB_ENTRIES HLDB.size()
 
 /*** prototypes ***/
 void editorSetStatusMessage(const char *fmt, ...);
@@ -809,10 +838,14 @@ static void editorDrawStatusBar(abuf &ab)
     rightStatus << (E.cy + 1) << "/" << E.rows.size();
 
     std::string lStr = leftStatus.str();
-    std::string rStr = rightStatus.str();
 
-    int len = (int)lStr.size();
-    int rlen = (int)rStr.size();
+    rightStatus << (E.syntax ? E.syntax->filetype : "no ft")
+                << " | " << (E.cy + 1) << "/" << E.rows.size();
+
+    std::string rStr = rightStatus.str(); // Convert right status to a string
+
+    int len = static_cast<int>(lStr.size());
+    int rlen = static_cast<int>(rStr.size());
 
     if (len > E.screencols)
     {
@@ -1134,6 +1167,7 @@ static void initEditor()
     E.filename.clear();
     E.statusmsg.clear();
     E.statusmsg_time = 0;
+    E.syntax = nullptr;
 
     if (getWindowSize(E.screenrows, E.screencols) == -1)
     {
