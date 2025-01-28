@@ -289,13 +289,31 @@ static int getWindowSize(int &rows, int &cols)
 
 /*** syntax highlighting ***/
 
+static int is_separator(int c)
+{
+    return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
+}
+
 static void editorUpdateSyntax(ERow &row){
     row.hl.assign(row.render.size(), HL_NORMAL);
 
-    for(size_t i = 0; i < row.render.size(); i++){
-        if (isdigit(row.render[i])){
+    int prev_sep = 1;
+
+    size_t i = 0;
+    while(i < row.render.size()){
+        char c = row.render[i];
+        unsigned char prev_hl = (i > 0) ? row.hl[i - 1] : HL_NORMAL;
+
+        if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
+            (c == '.' && prev_hl == HL_NUMBER))
+        {
             row.hl[i] = HL_NUMBER;
+            i++;
+            prev_sep = 0;
+            continue;
         }
+        prev_sep = is_separator(c);
+        i++;
     }
 }
 
