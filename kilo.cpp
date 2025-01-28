@@ -43,7 +43,8 @@ enum editorKeys
 
 enum editorHighlight {
     HL_NORMAL = 0,
-    HL_NUMBER
+    HL_NUMBER,
+    HL_MATCH
 };
 
 /*** data ***/
@@ -301,6 +302,7 @@ static void editorUpdateSyntax(ERow &row){
 static int editorSyntaxColor(int hl) {
     switch(hl) {
         case HL_NUMBER: return 31;
+        case HL_MATCH: return 34;
         default: return 37;
     }
 }
@@ -597,6 +599,10 @@ static void editorFindCallback(std::string &query, int key) {
             E.cy = current;
             E.cx = static_cast<int>(pos);
             E.rowoff = E.rows.size();
+
+            E.rows[current].hl.assign(E.rows[current].render.size(), HL_NORMAL); // Reset highlighting
+            std::fill(E.rows[current].hl.begin() + pos, E.rows[current].hl.begin() + pos + query.size(), HL_MATCH);
+
             break;
         }
     }
