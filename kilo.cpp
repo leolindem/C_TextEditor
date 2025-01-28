@@ -41,6 +41,11 @@ enum editorKeys
     PAGE_DOWN
 };
 
+enum editorHighlight {
+    HL_NORMAL = 0,
+    HL_NUMBER
+};
+
 /*** data ***/
 
 /*
@@ -52,6 +57,7 @@ struct ERow
 {
     std::string chars;  // The actual text of the row
     std::string render; // The rendered version (tabs expanded, etc.)
+    std::vector<int> hl;
 };
 
 /*
@@ -280,6 +286,25 @@ static int getWindowSize(int &rows, int &cols)
     }
 }
 
+/*** syntax highlighting ***/
+
+static void editorUpdateSyntax(ERow &row){
+    row.hl.assign(row.render.size(), HL_NORMAL);
+
+    for(size_t i = 0; i < row.render.size(); i++){
+        if (isdigit(row.render[i])){
+            row.hl[i] = HL_NUMBER;
+        }
+    }
+}
+
+static int editorSyntaxColor(int hl) {
+    switch(hl) {
+        case HL_NUMBER: return 31;
+        default: return 37;
+    }
+}
+
 /*** row operations ***/
 
 /**
@@ -326,6 +351,7 @@ static void editorUpdateRow(ERow &row)
         }
     }
     row.render = render.str();
+    editorUpdateSyntax(row);
 }
 
 /**
@@ -698,17 +724,28 @@ static void editorDrawRows(abuf &ab)
             if (len > E.screencols)
                 len = E.screencols;
             
+            int current_color = -1;
             for (int j = 0; j < len; j++){
                 char c = E.rows[filerow].render[E.coloff + j];
-                if (isdigit(c)){
-                    abAppend(ab, "\x1b[31m", 5);
+                int hl = E.rows[filerow].hl[E.coloff + j];
+                if (hl == HL_NORMAL){
+                    if (current_color != -1){
+                        abAppend(ab, "\x1b[39m", 5);
+                        current_color = -1;
+                    }
                     abAppend(ab, std::string(1, c).c_str(), 1);
-                    abAppend(ab, "\x1b[0m", 4);
-                }
-                else {
+                } else {
+                    int color = editorSyntaxColor(hl);
+                    if (color != current_color) {
+                        current_color = color;
+                        char buf[16];
+                        int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+                        abAppend(ab, buf, clen);
+                    }
                     abAppend(ab, std::string(1, c).c_str(), 1);
                 }
             }
+            abAppend(ab, "\x1b[39m", 5);
         }
 
         // Clear to end of line
