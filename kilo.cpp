@@ -43,11 +43,14 @@ enum editorKeys
 
 enum editorHighlight {
     HL_NORMAL = 0,
+    HL_COMMENT,
+    HL_STRING,
     HL_NUMBER,
     HL_MATCH
 };
 
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
+#define HL_HIGHLIGHT_STRINGS (1 << 1)
 
 /*** data ***/
 
@@ -101,6 +104,7 @@ struct EditorSyntax
 {
     std::string filetype;                // File type name
     std::vector<std::string> extensions; // File extensions
+    std::string singleline_comment_start;
     int flags;                           // Syntax highlighting flags
 };
 
@@ -108,7 +112,8 @@ std::vector<EditorSyntax> HLDB = {
     {
         "c",                  // File type
         {".c", ".h", ".cpp"}, // Extensions
-        HL_HIGHLIGHT_NUMBERS  // Flags
+        "//",
+        HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS // Flags
     },
 };
 
@@ -327,11 +332,27 @@ static void editorUpdateSyntax(ERow &row){
     row.hl.assign(row.render.size(), HL_NORMAL);
 
     int prev_sep = 1;
+    int in_string = 0;
 
     size_t i = 0;
     while(i < row.render.size()){
         char c = row.render[i];
         unsigned char prev_hl = (i > 0) ? row.hl[i - 1] : HL_NORMAL;
+
+        if (in_string){
+            row.hl[i] = HL_STRING;
+            if (c == in_string) in_string = 0;
+            i++;
+            prev_sep = 1;
+            continue;
+        } else {
+            if (c == '"' || c == '\'') {
+                in_string = c;
+                row.hl[i] = HL_STRING;
+                i++;
+                continue;
+            }
+        }
 
         if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
             (c == '.' && prev_hl == HL_NUMBER))
@@ -348,6 +369,8 @@ static void editorUpdateSyntax(ERow &row){
 
 static int editorSyntaxColor(int hl) {
     switch(hl) {
+        case HL_COMMENT: return 36;
+        case HL_STRING: return 35;
         case HL_NUMBER: return 31;
         case HL_MATCH: return 34;
         default: return 37;
