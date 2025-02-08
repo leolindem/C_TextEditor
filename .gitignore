@@ -2,3 +2,4 @@ kilo
 kilo.o
 test.txt
 .DS_Store
+.vscode

@@ -1,13 +1,13 @@
-# Makefile for Kilo editor in C++
+# Makefile for Bolt editor in C++
 
 # Compiler and flags
 CXX       := g++
 CXXFLAGS  := -std=c++17 -Wall -Wextra -pedantic
 
 # Targets
-SRC       := kilo.cpp
+SRC       := Bolt.cpp
 OBJ       := $(SRC:.cpp=.o)
-EXEC      := kilo
+EXEC      := Bolt
 
 # Default target
 all: $(EXEC)
