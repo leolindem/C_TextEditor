@@ -1257,6 +1257,18 @@ static void editorProcessKeypress()
     case '\x1b':
         // Do nothing
         break;
+    
+    case ((int)'{'):
+        editorInsertChar((char)c);
+        editorInsertChar('}');
+        E.cx--;
+        break;
+    
+    case ((int)'('):
+        editorInsertChar((char)c);
+        editorInsertChar(')');
+        E.cx--;
+        break;
 
     default:
         // Insert normal character
