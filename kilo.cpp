@@ -44,6 +44,8 @@ enum editorKeys
 enum editorHighlight {
     HL_NORMAL = 0,
     HL_COMMENT,
+    HL_KEYWORD1,
+    HL_KEYWORD2,
     HL_STRING,
     HL_NUMBER,
     HL_MATCH
@@ -104,6 +106,7 @@ struct EditorSyntax
 {
     std::string filetype;                // File type name
     std::vector<std::string> extensions; // File extensions
+    std::vector<std::string> keywords;
     std::string singleline_comment_start;
     int flags;                           // Syntax highlighting flags
 };
@@ -112,6 +115,11 @@ std::vector<EditorSyntax> HLDB = {
     {
         "c",                  // File type
         {".c", ".h", ".cpp"}, // Extensions
+        {
+            "switch", "if", "while", "for", "break", "continue", "return", "else",
+            "struct", "union", "typedef", "static", "enum", "class", "case",
+            "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
+            "void|"},
         "//",
         HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS // Flags
     },
@@ -328,36 +336,52 @@ static int is_separator(int c)
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }
 
-static void editorUpdateSyntax(ERow &row){
+static void editorUpdateSyntax(ERow &row)
+{
+    // Initialize all characters to normal highlighting.
     row.hl.assign(row.render.size(), HL_NORMAL);
 
-    int prev_sep = 1;
-    int in_string = 0;
+    // Get the list of keywords from the currently selected syntax.
+    std::vector<std::string> keywords;
+    if (E.syntax)
+    {
+        keywords = E.syntax->keywords;
+    }
 
+    int prev_sep = 1;  // True if the previous character is a separator.
+    int in_string = 0; // 0 means not in a string; otherwise holds the quote char.
     size_t i = 0;
-    while(i < row.render.size()){
+    while (i < row.render.size())
+    {
+        // Handle single-line comments.
         if (E.syntax && !E.syntax->singleline_comment_start.empty() && !in_string)
         {
             const std::string &comment_start = E.syntax->singleline_comment_start;
             if (i + comment_start.size() <= row.render.size() &&
                 row.render.substr(i, comment_start.size()) == comment_start)
             {
-                // Mark the rest of the line as a comment.
                 std::fill(row.hl.begin() + i, row.hl.end(), HL_COMMENT);
                 break;
             }
         }
+
         char c = row.render[i];
         unsigned char prev_hl = (i > 0) ? row.hl[i - 1] : HL_NORMAL;
 
-        if (in_string){
+        // Handle strings.
+        if (in_string)
+        {
             row.hl[i] = HL_STRING;
-            if (c == in_string) in_string = 0;
+            if (c == in_string)
+                in_string = 0;
             i++;
             prev_sep = 1;
             continue;
-        } else {
-            if (c == '"' || c == '\'') {
+        }
+        else
+        {
+            if (c == '"' || c == '\'')
+            {
                 in_string = c;
                 row.hl[i] = HL_STRING;
                 i++;
@@ -365,6 +389,7 @@ static void editorUpdateSyntax(ERow &row){
             }
         }
 
+        // Handle numbers.
         if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
             (c == '.' && prev_hl == HL_NUMBER))
         {
@@ -373,6 +398,43 @@ static void editorUpdateSyntax(ERow &row){
             prev_sep = 0;
             continue;
         }
+
+        // Handle keywords.
+        // Only check for a keyword match if the previous character was a separator.
+        bool matched = false;
+        if (prev_sep)
+        {
+            for (const auto &kw : keywords)
+            {
+                // Copy the keyword; if it ends with a '|' then remove it and use a different color.
+                std::string key = kw;
+                int kw_color = HL_KEYWORD1;
+                if (!key.empty() && key.back() == '|')
+                {
+                    key.pop_back();
+                    kw_color = HL_KEYWORD2;
+                }
+                size_t klen = key.size();
+                // Check if the current substring matches the keyword, and ensure that the character
+                // after the keyword is a separator (or the end of the line).
+                if (i + klen <= row.render.size() &&
+                    row.render.compare(i, klen, key) == 0 &&
+                    (i + klen == row.render.size() || is_separator(row.render[i + klen])))
+                {
+                    std::fill(row.hl.begin() + i, row.hl.begin() + i + klen, kw_color);
+                    i += klen;
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        if (matched)
+        {
+            prev_sep = 0;
+            continue;
+        }
+
+        // Update the "previous separator" status and move to the next character.
         prev_sep = is_separator(c);
         i++;
     }
@@ -381,6 +443,8 @@ static void editorUpdateSyntax(ERow &row){
 static int editorSyntaxColor(int hl) {
     switch(hl) {
         case HL_COMMENT: return 36;
+        case HL_KEYWORD1: return 33;
+        case HL_KEYWORD2: return 32;
         case HL_STRING: return 35;
         case HL_NUMBER: return 31;
         case HL_MATCH: return 34;
