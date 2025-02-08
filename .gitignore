@@ -2,4 +2,4 @@ Bolt
 Bolt.o
 test.txt
 .DS_Store
-.vscode
+.vscode/
