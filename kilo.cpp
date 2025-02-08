@@ -89,7 +89,7 @@ struct editorConfig
     std::string statusmsg;
     time_t statusmsg_time;
 
-    struct editorSyntax *syntax;
+    struct EditorSyntax *syntax;
     struct termios orig_termios;
 
     // Each line in the file is stored in a vector of ERow
@@ -336,6 +336,17 @@ static void editorUpdateSyntax(ERow &row){
 
     size_t i = 0;
     while(i < row.render.size()){
+        if (E.syntax && !E.syntax->singleline_comment_start.empty() && !in_string)
+        {
+            const std::string &comment_start = E.syntax->singleline_comment_start;
+            if (i + comment_start.size() <= row.render.size() &&
+                row.render.substr(i, comment_start.size()) == comment_start)
+            {
+                // Mark the rest of the line as a comment.
+                std::fill(row.hl.begin() + i, row.hl.end(), HL_COMMENT);
+                break;
+            }
+        }
         char c = row.render[i];
         unsigned char prev_hl = (i > 0) ? row.hl[i - 1] : HL_NORMAL;
 
@@ -375,6 +386,23 @@ static int editorSyntaxColor(int hl) {
         case HL_MATCH: return 34;
         default: return 37;
     }
+}
+
+static void editorSelectSyntaxHighlight()
+{
+    E.syntax = nullptr; // Reset any previously selected syntax
+
+    if (E.filename.empty())
+        return;
+
+    // Find the last '.' in the filename to extract the extension.
+    size_t dot = E.filename.find_last_of('.');
+    if (dot == std::string::npos)
+        return;
+
+    std::string file_ext = E.filename.substr(dot);
+
+    E.syntax = &HLDB[0];
 }
 
 /*** row operations ***/
@@ -582,6 +610,7 @@ static std::string editorRowsToString()
 static void editorOpen(const std::string &filename)
 {
     E.filename = filename;
+    editorSelectSyntaxHighlight();
 
     std::ifstream file(filename);
     if (!file.is_open())
@@ -616,6 +645,7 @@ static void editorSave()
             editorSetStatusMessage("Save aborted");
             return;
         }
+        editorSelectSyntaxHighlight();
         E.filename = newName;
     }
 
